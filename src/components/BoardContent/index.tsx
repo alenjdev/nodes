@@ -5,7 +5,7 @@ import { Header } from "./Header";
 import { Topic } from "./Topic";
 
 interface IBoardContentProps {
-  onlineNodes: string[];
+  onlineNodes: any;
 }
 
 export class BoardContent extends Component<IBoardContentProps> {
@@ -15,12 +15,15 @@ export class BoardContent extends Component<IBoardContentProps> {
       <TopicBoard>
         <Header title={"Nodes"} />
         {nodes.map((_, idx) => {
+          const node = onlineNodes.keys.indexOf(_);
           return (
             <Topic
               key={idx}
               name={_}
               topicState={
-                onlineNodes.indexOf(_) >= 0 ? "good_standing" : "not_found"
+                node >= 0 && onlineNodes.values[node]
+                  ? "good_standing"
+                  : "not_found"
               }
             />
           );

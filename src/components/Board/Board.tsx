@@ -1,72 +1,59 @@
-import { Component, ReactNode } from "react";
+import { Component, ReactNode, useState, useEffect } from "react";
 import { ModuleData, App } from "@formant/data-sdk";
 import { BoardContent } from "../BoardContent";
 import { ErrorMsg } from "../ErrorMsg/ErrorMsg";
 
 interface IBoardState {
-  onlineNodes: string[] | undefined;
+  onlineNodes: any | undefined;
   errorMessage: string;
 }
 
-export class Board extends Component<{}, IBoardState> {
-  public constructor(props: any) {
-    super(props);
-    this.state = {
-      onlineNodes: undefined,
-      errorMessage: "Waiting for data...",
-    };
-  }
-
-  public componentDidMount() {
-    App.addModuleDataListener(this.receiveModuleData);
-  }
-
-  render(): ReactNode {
-    const { errorMessage, onlineNodes } = this.state;
-    const tableContentsVisible = !!onlineNodes;
-    const message = errorMessage ?? "Loading...";
-    return tableContentsVisible ? (
-      <BoardContent onlineNodes={this.state.onlineNodes!} />
-    ) : (
-      <ErrorMsg msg={message.toString()} />
-    );
-  }
-
-  private receiveModuleData = async (newValue: ModuleData) => {
-    try {
-      const url = getLatestJson(newValue);
-      if (!url) return;
-      const latestStats = await (await fetch(url)).json();
-      this.setState({ onlineNodes: latestStats });
-    } catch (error) {
-      this.setState({ onlineNodes: undefined, errorMessage: error as string });
-    }
-  };
+interface Bitset {
+  keys: string[];
+  values: boolean[];
 }
 
-function getLatestJson(moduleData: ModuleData): string | undefined {
+export const Board = () => {
+  const [onlineNodes, setOnlineNodes] = useState<Bitset>({
+    keys: [],
+    values: [],
+  });
+
+  useEffect(() => {
+    App.addModuleDataListener(receiveModuleData);
+  });
+  const receiveModuleData = async (newValue: ModuleData) => {
+    const nodes = getNodes(newValue);
+    if (typeof nodes === "string" || nodes === undefined) return;
+    setOnlineNodes(nodes);
+  };
+
+  return <BoardContent onlineNodes={onlineNodes} />;
+};
+
+function getNodes(moduleData: ModuleData): string | undefined | Bitset {
   const streams = Object.values(moduleData.streams);
 
   if (streams.length === 0) {
-    throw new Error("No streams.");
+    return "No streams.";
   }
   const stream = streams[0];
   if (stream === undefined) {
-    throw new Error("No stream.");
+    return "No stream.";
   }
   if (stream.loading) {
     return undefined;
   }
   if (stream.tooMuchData) {
-    throw new Error("Too much data.");
+    return "Too much data.";
   }
   if (stream.data.length === 0) {
-    throw new Error("No data.");
+    return "No data.";
   }
   const latestPoint = stream.data[0].points.at(-1);
 
   if (!latestPoint) {
-    throw new Error("No datapoints.");
+    return "No datapoints.";
   }
   return latestPoint[1];
 }
